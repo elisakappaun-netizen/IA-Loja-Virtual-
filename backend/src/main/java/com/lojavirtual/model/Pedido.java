@@ -41,6 +41,18 @@ public class Pedido {
     @OneToOne(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private Recomendacao recomendacao;
 
+    @Column(length = 100)
+    private String perfilCliente;
+
+    @Column(length = 1000)
+    private String recomendacoes;
+
+    @Column(length = 50)
+    private String cupomDesconto;
+
+    @Column(length = 2000)
+    private String mensagemIA;
+
     public Long getId() {
         return id;
     }
@@ -101,4 +113,40 @@ public class Pedido {
         itens.add(item);
         item.setPedido(this);
     }
+
+    public String getPerfilCliente() {
+        return perfilCliente;
+    }
+
+    public void setPerfilCliente(String perfilCliente) {
+        this.perfilCliente = perfilCliente;
+    }
+
+    public String getRecomendacoes() {
+        return recomendacoes;
+    }
+
+    public void setRecomendacoes(String recomendacoes) {
+        this.recomendacoes = recomendacoes;
+    }
+
+    public String getCupomDesconto() {
+        return cupomDesconto;
+    }
+
+    public void setCupomDesconto(String cupomDesconto) {
+        this.cupomDesconto = cupomDesconto;
+    }
+
+    public String getMensagemIA() {
+        return mensagemIA;
+    }
+
+    public void setMensagemIA(String mensagemIA) {
+        this.mensagemIA = mensagemIA;
+    }
+
+    
+
+    
 }

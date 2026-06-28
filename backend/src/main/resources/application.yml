@@ -9,7 +9,7 @@ server:
 
 n8n:
   webhook:
-    url: http://localhost:5678/webhook/pedido-recomendacao
+    url: http://localhost:5678/webhook-test/pedido-recomendacao
     timeout-ms: 30000
 
 cors:
