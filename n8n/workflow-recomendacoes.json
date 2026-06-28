@@ -1,0 +1,117 @@
+{
+  "name": "Pedido Recomendacao IA",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pedido-recomendacao",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "pedido-recomendacao"
+    },
+    {
+      "parameters": {
+        "jsCode": "const pedido = $json.body ?? $json;\n\nconst prompt = `Você é um consultor de vendas especialista de uma loja virtual.\nSua missão é analisar o pedido recente de um cliente e gerar recomendações estratégicas com base nos produtos comprados e no valor total.\n\nDADOS DO PEDIDO:\n${JSON.stringify(pedido)}\n\nREGRAS OBRIGATÓRIAS:\nRetorne APENAS um objeto JSON válido.\nNão adicione nenhuma formatação Markdown (como \\`\\`\\`json), nem textos antes ou depois.\nUtilize estritamente a estrutura abaixo:\n\n{\n  \"perfilCliente\": \"Classifique o cliente (ex: Cliente Premium, Gamer, etc)\",\n  \"recomendacoes\": \"Liste 3 produtos recomendados em uma única string separados por vírgula\",\n  \"cupomDesconto\": \"Crie um código de cupom de desconto curto\",\n  \"mensagemIA\": \"Escreva uma mensagem amigável agradecendo a compra e informando o cupom\"\n}`;\n\nreturn [{ json: { pedido, prompt } }];"
+      },
+      "id": "montar-prompt",
+      "name": "Montar Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const pedido = $('Montar Prompt').first().json.pedido;\nconst produtos = pedido.produtos || [];\nconst valorTotal = Number(pedido.valorTotal || 0);\nconst cliente = pedido.cliente || 'Cliente';\n\nlet perfilCliente = 'Cliente Regular';\nif (valorTotal >= 2000) perfilCliente = 'Cliente Premium';\nelse if (produtos.some(p => /gamer|mouse|teclado|headset/i.test(p))) perfilCliente = 'Gamer';\nelse if (valorTotal >= 800) perfilCliente = 'Cliente Tech';\n\nconst catalogo = [\n  'Teclado Mecânico',\n  'Headset Gamer',\n  'Mousepad XL',\n  'Monitor 27\"',\n  'Webcam HD',\n  'Suporte Notebook'\n];\n\nconst recomendados = catalogo\n  .filter(item => !produtos.includes(item))\n  .slice(0, 3);\n\nwhile (recomendados.length < 3) {\n  recomendados.push('Mousepad XL');\n}\n\nconst cupomBase = cliente.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || 'LOJA';\nconst cupomDesconto = `${cupomBase}10`;\n\nconst resposta = {\n  perfilCliente,\n  recomendacoes: recomendados.join(', '),\n  cupomDesconto,\n  mensagemIA: `Olá ${cliente}! Obrigado pela sua compra. Preparamos ofertas especiais para você. Use o cupom ${cupomDesconto} e ganhe 10% OFF na próxima compra!`\n};\n\nreturn [{ json: resposta }];"
+      },
+      "id": "gerar-recomendacao",
+      "name": "Gerar Recomendacao",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300],
+      "notes": "Substitua este nó por OpenAI/AI Agent conectado ao prompt de 'Montar Prompt' para usar IA real."
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nlet parsed = raw;\n\nif (typeof raw.output === 'string') {\n  let text = raw.output.trim();\n  if (text.startsWith('```')) {\n    text = text.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '');\n  }\n  parsed = JSON.parse(text);\n}\n\nconst required = ['perfilCliente', 'recomendacoes', 'cupomDesconto', 'mensagemIA'];\nfor (const field of required) {\n  if (!parsed[field] || String(parsed[field]).trim() === '') {\n    throw new Error(`Campo obrigatório ausente: ${field}`);\n  }\n}\n\nreturn [{ json: parsed }];"
+      },
+      "id": "parse-json",
+      "name": "Parse JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1440, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Montar Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Prompt": {
+      "main": [
+        [
+          {
+            "node": "Gerar Recomendacao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Recomendacao": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

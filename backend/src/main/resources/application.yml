@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: loja-virtual
+  profiles:
+    active: dev
+
+server:
+  port: 8080
+
+n8n:
+  webhook:
+    url: http://localhost:5678/webhook/pedido-recomendacao
+    timeout-ms: 30000
+
+cors:
+  allowed-origins: http://localhost:5173
