@@ -1,5 +1,6 @@
 package com.lojavirtual.service;
 
+import com.lojavirtual.dto.AnalisePedidoRequest;
 import com.lojavirtual.dto.CriarPedidoRequest;
 import com.lojavirtual.dto.ItemPedidoRequest;
 import com.lojavirtual.dto.N8nPedidoPayload;
@@ -97,6 +98,23 @@ public class PedidoService {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Pedido não encontrado"));
         return DtoMapper.toPedidoDTO(pedido);
     }
+
+@Transactional
+public PedidoDTO atualizarAnalisePedido(Long id, AnalisePedidoRequest request) {
+    Pedido pedido = pedidoRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Pedido não encontrado"));
+
+    pedido.setPerfilCliente(request.perfilCliente());
+    pedido.setRecomendacoes(request.recomendacoes());
+    pedido.setCupomDesconto(request.cupomDesconto());
+    pedido.setMensagemIA(request.mensagemIA());
+
+    Pedido pedidoSalvo = pedidoRepository.save(pedido);
+
+    return DtoMapper.toPedidoDTO(pedidoSalvo);
+}
+
+
 
     @Transactional
     public PedidoDTO salvarRecomendacaoCallback(Long pedidoId, RecomendacaoDTO recomendacaoDTO) {
