@@ -1,5 +1,5 @@
 
-# IA-Loja-Virtual-
+
 # 🛒 Loja Virtual com IA: Integração Backend, Web e Automação
 
 * **Deploy do Trabalho Final:** [Acessar a Aplicação](https://grupo1trabalho.netlify.app/)
