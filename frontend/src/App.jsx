@@ -15,6 +15,7 @@ function App() {
   const [error, setError] = useState('');
   const [loadingProdutos, setLoadingProdutos] = useState(true);
 
+  // 1. Carrega os produtos iniciais
   useEffect(() => {
     async function carregarProdutos() {
       try {
@@ -29,6 +30,35 @@ function App() {
 
     carregarProdutos();
   }, []);
+
+  // 2. O DESPERTADOR DA IA (Polling)
+  // Fica perguntando ao Spring Boot a cada 5 segundos se a IA já respondeu
+  useEffect(() => {
+    let interval;
+    
+    // Se temos um pedido, mas a recomendação ainda é null, ligamos o timer
+    if (pedido && !pedido.recomendacao) {
+      interval = setInterval(async () => {
+        try {
+          const resposta = await fetch(`http://localhost:8080/api/pedidos/${pedido.id}`);
+          const dadosAtualizados = await resposta.json();
+
+          // Se a recomendação finalmente chegou do n8n/Gemini...
+          if (dadosAtualizados.recomendacao !== null) {
+            setPedido(dadosAtualizados); // Atualiza a tela!
+            clearInterval(interval); // Desliga o timer
+          }
+        } catch (erro) {
+          console.error("Erro ao buscar atualização do pedido:", erro);
+        }
+      }, 5000); // 5000 = 5 segundos
+    }
+
+    // Limpa o timer se o usuário sair da página ou fechar a compra
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [pedido]);
 
   function adicionarAoCarrinho(produto) {
     setCarrinho((prev) => {

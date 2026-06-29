@@ -104,16 +104,24 @@ public PedidoDTO atualizarAnalisePedido(Long id, AnalisePedidoRequest request) {
     Pedido pedido = pedidoRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Pedido não encontrado"));
 
-    pedido.setPerfilCliente(request.perfilCliente());
-    pedido.setRecomendacoes(request.recomendacoes());
-    pedido.setCupomDesconto(request.cupomDesconto());
-    pedido.setMensagemIA(request.mensagemIA());
+    Recomendacao recomendacao = pedido.getRecomendacao();
 
+    if (recomendacao == null) {
+        recomendacao = new Recomendacao();
+        recomendacao.setPedido(pedido);
+        pedido.setRecomendacao(recomendacao);
+    }
+
+    recomendacao.setPerfilCliente(request.perfilCliente());
+    recomendacao.setRecomendacoes(request.recomendacoes());
+    recomendacao.setCupomDesconto(request.cupomDesconto());
+    recomendacao.setMensagemIA(request.mensagemIA());
+
+    recomendacaoRepository.save(recomendacao);
     Pedido pedidoSalvo = pedidoRepository.save(pedido);
 
     return DtoMapper.toPedidoDTO(pedidoSalvo);
 }
-
 
 
     @Transactional
@@ -137,5 +145,6 @@ public PedidoDTO atualizarAnalisePedido(Long id, AnalisePedidoRequest request) {
         recomendacao.setMensagemIA(dto.mensagemIA());
         recomendacaoRepository.save(recomendacao);
         pedido.setRecomendacao(recomendacao);
+        pedidoRepository.save(pedido);
     }
 }
