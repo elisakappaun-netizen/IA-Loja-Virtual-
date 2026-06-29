@@ -1,4 +1,3 @@
-# IA-Loja-Virtual-
 
 # IA-Loja-Virtual-
 # 🛒 Loja Virtual com IA: Integração Backend, Web e Automação
