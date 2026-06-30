@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+
+import AccessibilityToolbar from './components/AccessibilityToolbar';
 import ProductCard from './components/ProductCard';
 import CartPanel from './components/CartPanel';
 import RecommendationCard from './components/RecommendationCard';
-import { criarPedido, listarProdutos } from './services/api';
+import { buscarPedido, criarPedido, listarProdutos } from './services/api';
+
 import './App.css';
 
 function App() {
@@ -15,7 +18,26 @@ function App() {
   const [error, setError] = useState('');
   const [loadingProdutos, setLoadingProdutos] = useState(true);
 
-  // 1. Carrega os produtos iniciais
+  const [accessibility, setAccessibility] = useState({
+    highContrast: false,
+    grayscale: false,
+    largeText: false,
+  });
+
+  const totalItensCarrinho = carrinho.reduce(
+    (total, item) => total + item.quantidade,
+    0,
+  );
+
+  const appClassName = [
+    'app',
+    accessibility.highContrast ? 'a11y-high-contrast' : '',
+    accessibility.grayscale ? 'a11y-grayscale' : '',
+    accessibility.largeText ? 'a11y-large-text' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   useEffect(() => {
     async function carregarProdutos() {
       try {
@@ -31,38 +53,48 @@ function App() {
     carregarProdutos();
   }, []);
 
-  // 2. O DESPERTADOR DA IA (Polling)
-  // Fica perguntando ao Spring Boot a cada 5 segundos se a IA já respondeu
   useEffect(() => {
     let interval;
-    
-    // Se temos um pedido, mas a recomendação ainda é null, ligamos o timer
+
     if (pedido && !pedido.recomendacao) {
       interval = setInterval(async () => {
         try {
-          const resposta = await fetch(`http://localhost:8080/api/pedidos/${pedido.id}`);
-          const dadosAtualizados = await resposta.json();
+          const dadosAtualizados = await buscarPedido(pedido.id);
 
-          // Se a recomendação finalmente chegou do n8n/Gemini...
           if (dadosAtualizados.recomendacao !== null) {
-            setPedido(dadosAtualizados); // Atualiza a tela!
-            clearInterval(interval); // Desliga o timer
+            setPedido(dadosAtualizados);
+            clearInterval(interval);
           }
         } catch (erro) {
-          console.error("Erro ao buscar atualização do pedido:", erro);
+          console.error('Erro ao buscar atualização do pedido:', erro);
         }
-      }, 5000); // 5000 = 5 segundos
+      }, 5000);
     }
 
-    // Limpa o timer se o usuário sair da página ou fechar a compra
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [pedido]);
 
+  function alternarAcessibilidade(chave) {
+    setAccessibility((estadoAtual) => ({
+      ...estadoAtual,
+      [chave]: !estadoAtual[chave],
+    }));
+  }
+
+  function limparAcessibilidade() {
+    setAccessibility({
+      highContrast: false,
+      grayscale: false,
+      largeText: false,
+    });
+  }
+
   function adicionarAoCarrinho(produto) {
     setCarrinho((prev) => {
       const existente = prev.find((item) => item.produto.id === produto.id);
+
       if (existente) {
         return prev.map((item) =>
           item.produto.id === produto.id
@@ -70,6 +102,7 @@ function App() {
             : item,
         );
       }
+
       return [...prev, { produto, quantidade: 1 }];
     });
   }
@@ -79,13 +112,23 @@ function App() {
   }
 
   async function finalizarCompra() {
+    if (!cliente.trim() || !cidade.trim()) {
+      setError('Informe o nome do cliente e a cidade antes de finalizar a compra.');
+      return;
+    }
+
+    if (carrinho.length === 0) {
+      setError('Adicione pelo menos um produto ao carrinho.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
       const payload = {
-        cliente,
-        cidade,
+        cliente: cliente.trim(),
+        cidade: cidade.trim(),
         itens: carrinho.map((item) => ({
           produtoId: item.produto.id,
           quantidade: item.quantidade,
@@ -106,18 +149,43 @@ function App() {
     setPedido(null);
     setCliente('');
     setCidade('');
+    setError('');
   }
 
   if (pedido) {
     return (
-      <div className="app">
-        <header className="app-header">
-          <h1>Loja Virtual</h1>
-          <button type="button" className="secondary" onClick={reiniciarCompra}>
+      <div className={appClassName}>
+        <a className="skip-link" href="#conteudo-principal">
+          Pular para o conteúdo principal
+        </a>
+
+        <header className="app-header" role="banner">
+          <div>
+            <h1>Loja Virtual</h1>
+            <p>Pedido registrado com acompanhamento de recomendações por IA.</p>
+          </div>
+
+          <button
+            type="button"
+            className="secondary"
+            onClick={reiniciarCompra}
+            aria-label="Iniciar uma nova compra"
+          >
             Nova compra
           </button>
         </header>
-        <main className="confirmation-page">
+
+        <AccessibilityToolbar
+          settings={accessibility}
+          onToggle={alternarAcessibilidade}
+          onReset={limparAcessibilidade}
+        />
+
+        <main
+          id="conteudo-principal"
+          className="confirmation-page"
+          aria-live="polite"
+        >
           <RecommendationCard pedido={pedido} />
         </main>
       </div>
@@ -125,23 +193,56 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <header className="app-header">
+    <div className={appClassName}>
+      <a className="skip-link" href="#conteudo-principal">
+        Pular para o conteúdo principal
+      </a>
+
+      <header className="app-header" role="banner">
         <div>
           <h1>Loja Virtual</h1>
           <p>Compre agora e receba recomendações personalizadas com cupom exclusivo.</p>
         </div>
+
+        <nav className="main-nav" aria-label="Navegação principal">
+          <a href="#catalogo">Catálogo</a>
+          <a href="#carrinho">Carrinho ({totalItensCarrinho})</a>
+        </nav>
       </header>
 
-      {error && <div className="error-banner">{error}</div>}
+      <AccessibilityToolbar
+        settings={accessibility}
+        onToggle={alternarAcessibilidade}
+        onReset={limparAcessibilidade}
+      />
 
-      <main className="store-layout">
-        <section className="catalog">
-          <h2>Catálogo</h2>
+      {error && (
+        <div className="error-banner" role="alert" aria-live="assertive">
+          {error}
+        </div>
+      )}
+
+      <main id="conteudo-principal" className="store-layout">
+        <section
+          id="catalogo"
+          className="catalog"
+          aria-labelledby="catalogo-titulo"
+        >
+          <div className="section-heading">
+            <h2 id="catalogo-titulo">Catálogo</h2>
+            <p>Escolha os produtos e adicione ao carrinho.</p>
+          </div>
+
           {loadingProdutos ? (
-            <p>Carregando produtos...</p>
+            <p className="loading-message" role="status" aria-live="polite">
+              Carregando produtos...
+            </p>
           ) : (
-            <div className="product-grid">
+            <div
+              className="product-grid"
+              role="list"
+              aria-label="Lista de produtos disponíveis"
+            >
               {produtos.map((produto) => (
                 <ProductCard
                   key={produto.id}
